@@ -21,6 +21,12 @@ cp .env.example .env
 ```
 按需修改.env
 
+导入数据库
+
+```shell
+mysql -u 用户名 -p 数据库名 < 文件路径.sql
+```
+
 ## 启动 api server
 ```shell
 flask run --host=0.0.0.0 --port=5001 --debug

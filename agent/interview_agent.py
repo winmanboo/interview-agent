@@ -65,7 +65,7 @@ class InterviewAgent:
             'current_question_index': 0,
         }
         # TODO 可配置化
-        self.max_subject_number = 1
+        self.max_subject_number = 5
         self.config = {
             'configurable': {
                 'thread_id': self.session_id,
