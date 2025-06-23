@@ -18,8 +18,6 @@ class Config:
     SSL_CERT_FILE = os.getenv('SSL_CERT_FILE')
     SSL_KEY_FILE = os.getenv('SSL_KEY_FILE')
 
-    DASH_API_KEY = os.getenv('DASHSCOPE_API_KEY')
-
     @property
     def ssl_context(self):
         if self.SSL_CERT_FILE and self.SSL_KEY_FILE:

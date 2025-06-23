@@ -1,15 +1,17 @@
 import json
 import logging
+import os
 
 import dashscope
 from dashscope import MultiModalConversation
 from dashscope.audio.asr import TranslationRecognizerCallback, TranslationRecognizerRealtime
 from dashscope.audio.tts_v2 import SpeechSynthesizer, AudioFormat
+from dotenv import load_dotenv
 
 from webrtc.prompts.prompt import DASH_AUDIO_SYSTEM_PROMPT
 
-# fixme use config replace
-dashscope.api_key = 'sk-d88185ee19e042429ea8ceeb06854925'
+load_dotenv()
+dashscope.api_key = os.getenv('DASHSCOPE_API_KEY')
 
 def voice_recognition(audio_file_path: str, callback: TranslationRecognizerCallback):
     translator = TranslationRecognizerRealtime(
