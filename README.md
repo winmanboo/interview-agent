@@ -45,3 +45,7 @@ pnpm install
 pnpm run build
 pnpm run start
 ```
+
+# 简历提交
+提交简历用test目录下的resume.txt先测试，后续支持word、pdf等格式
+resume.txt内容你可以随意更改，可以让大模型给你生成一个，面试的问题基本上是基于简历提问的
