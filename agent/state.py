@@ -22,7 +22,8 @@ class Scoring(BaseModel):
 
 
 class Ratio(BaseModel):
-    summary: Optional[str] = Field(description="面试回答")
+    content: Optional[str] = Field(description="面试回答")
+    summary: Optional[str] = Field(description="ai总结")
     sentiment_analysis: Optional[SentimentAnalysis] = Field(description="情感分析")
     scoring: Optional[Scoring] = Field(description="评分")
 

@@ -4,10 +4,10 @@ from configs.database_config import DatabaseConfig
 from configs.deployment_config import DeploymentConfig
 from configs.graph_config import GraphConfig
 from configs.logging_config import LoggingConfig
-from configs.third_party_config import ThirdPartyConfig
+from configs.rtc_config import RtcConfig
 
 
-class InterviewConfig(LoggingConfig, DeploymentConfig, GraphConfig, DatabaseConfig, ThirdPartyConfig):
+class InterviewConfig(LoggingConfig, DeploymentConfig, GraphConfig, DatabaseConfig, RtcConfig):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

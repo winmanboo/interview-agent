@@ -65,7 +65,7 @@ class InterviewAgent:
             'current_question_index': 0,
         }
         # TODO 可配置化
-        self.max_subject_number = 5
+        self.max_subject_number = 1
         self.config = {
             'configurable': {
                 'thread_id': self.session_id,
@@ -91,6 +91,8 @@ class InterviewAgent:
             as_node='receive_resume_node',
         )
         self.app.invoke(None, self.config, stream_mode='values')
+        self.next_status = InterviewStatus.SELF_INTRO
+        return self.app.get_state(self.config).values['messages'][-1].content
 
     def self_introduction(self, introduction: str, ratio: Ratio):
         """自我介绍"""
@@ -104,6 +106,7 @@ class InterviewAgent:
             as_node='self_introduction_node'
         )
         self.app.invoke(None, self.config, stream_mode='values')
+        self.next_status = InterviewStatus.PROJECT_INTRO
         return self.app.get_state(self.config).values['messages'][-1].content
 
     def project_introduction(self, introduction: str, ratio: Ratio):
@@ -118,6 +121,7 @@ class InterviewAgent:
             as_node='project_introduction_node'
         )
         self.app.invoke(None, self.config, stream_mode='values')
+        self.next_status = InterviewStatus.SELF_EVALUATION
         return self.app.get_state(self.config).values['messages'][-1].content
 
     def self_evaluation(self, content: str, ratio: Ratio):
@@ -132,6 +136,7 @@ class InterviewAgent:
             as_node='self_evaluation_node'
         )
         self.app.invoke(None, self.config, stream_mode='values')
+        self.next_status = InterviewStatus.ANSWER_QUESTION
         return self.app.get_state(self.config).values['messages'][-1].content
 
     def answer_question(self, content: str, ratio: Ratio):
@@ -151,8 +156,12 @@ class InterviewAgent:
             as_node='answer_question_node'
         )
         self.app.invoke(None, self.config, stream_mode='values')
-        return (self.app.get_state(self.config).values['messages'][-1].content,
-                current_question_index + 1 >= self.max_subject_number)
+        if current_question_index + 1 >= self.max_subject_number:
+            self.next_status = InterviewStatus.END
+        return self.app.get_state(self.config).values['messages'][-1].content
 
     def start(self):
         return self.app.stream(input=self.inputs, config=self.config, stream_mode='values')
+
+    def is_ended(self):
+        return self.next_status == InterviewStatus.END

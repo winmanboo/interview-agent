@@ -7,6 +7,7 @@ from werkzeug.exceptions import BadRequest
 from controllers.service_api import api
 from libs import session_manager
 from models.interview import Category, Scene
+from models.message import MessageType
 
 
 class InterviewUploadResumeApi(Resource):
@@ -24,10 +25,10 @@ class InterviewUploadResumeApi(Resource):
             raise BadRequest('No session found')
         # FIXME 其他loader需要临时文件，然后用Loader加载
         text = file.read().decode('utf-8')
-        agent.commit_resume(text)
+        message = agent.commit_resume(text)
         return {
-            "status": 200,
-            "message": "OK",
+            'type': MessageType.AI,
+            "content": message,
         }
 
 

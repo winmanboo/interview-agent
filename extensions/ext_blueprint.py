@@ -1,6 +1,8 @@
-from interview_app import InterviewApp
 from flask_cors import CORS
+
 from controllers.service_api import bp as service_api_bp
+from interview_app import InterviewApp
+
 
 def init_app(app: InterviewApp):
     CORS(

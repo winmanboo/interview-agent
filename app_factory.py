@@ -13,9 +13,9 @@ def create_app_with_configs() -> InterviewApp:
 
 def initialize_extensions(app: InterviewApp):
     """初始化flask扩展"""
-    from extensions import ext_logging, ext_blueprint, ext_websocket, ext_database
+    from extensions import ext_logging, ext_blueprint, ext_database
 
-    extensions = [ext_logging, ext_blueprint, ext_websocket, ext_database]
+    extensions = [ext_logging, ext_blueprint, ext_database]
 
     for ext in extensions:
         short_name = ext.__name__.split(".")[-1]

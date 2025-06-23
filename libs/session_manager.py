@@ -10,11 +10,8 @@ class SessionManager:
         self.audio_chunks: Dict[str, List[Any]] = {}
 
     def put_session(self, session_id: str, agent: InterviewAgent):
-        if session_id not in self.session_table:
-            self.session_table[session_id] = agent
-            self.audio_chunks[session_id] = []
-        else:
-            raise RuntimeError(f"Session {session_id} already exists")
+        self.session_table[session_id] = agent
+        self.audio_chunks[session_id] = []
 
     def get_session(self, session_id: str) -> Optional[InterviewAgent]:
         if session_id not in self.session_table:
