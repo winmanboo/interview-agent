@@ -1,0 +1,7 @@
+# .dockerignore 示例
+**/node_modules/
+.git/
+.DS_Store
+.venv
+.vscode
+.__pycache__

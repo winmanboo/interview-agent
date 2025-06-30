@@ -65,15 +65,6 @@ async def offer(request):
                 audio_track.cut_off()
             elif message == 'stop':
                 await audio_track.analyze()
-                # 将阻塞操作移到线程池
-                # loop = asyncio.get_event_loop()
-                # await loop.run_in_executor(executor, audio_track.analyze)
-                # await audio_track.analyze()
-                # res = requests.get(url=api_server_url + f'/v1/agent/status/{session_id}')
-                # if str(res.json()).lower() == 'true':
-                #     channel.send(Message(type=MessageType.CUSTOM, content='end').model_dump_json())
-                # else:
-                #     channel.send(Message(type=MessageType.CUSTOM, content='next').model_dump_json())
 
     @pc.on("connectionstatechange")
     async def on_connectionstatechange():

@@ -78,7 +78,6 @@ function SimulationPage() {
   const [isInterviewStarted, setIsInterviewStarted] = useState(false)
   const [isPreparing, setIsPreparing] = useState(false)
   const [isAnswering, setIsAnswering] = useState(false)
-  const [isSpeaking, setIsSpeaking] = useState(false)
   const [preparationTime, setPreparationTime] = useState(5) // 准备时间5秒
   const [answerTime, setAnswerTime] = useState(120) // 回答时间2分钟
   const [remainingTime, setRemainingTime] = useState(0)
@@ -103,6 +102,11 @@ function SimulationPage() {
   const [questionHistory, setQuestionHistory] = useState<string[]>([])
 
   const lastAIReportRef = useRef<string | null>(null)
+
+  // 数字人duix实例ref
+  const duixRef = useRef<any>(null)
+  const [duixInited, setDuixInited] = useState(false)
+  const [isDuixSpeaking, setIsDuixSpeaking] = useState(false)
 
   // 初始化WebRTC客户端
   useEffect(() => {
@@ -169,10 +173,10 @@ function SimulationPage() {
 
   // 播放问题
   const playQuestion = () => {
-    setIsSpeaking(true);
+    setIsDuixSpeaking(true);
     // 这里可以添加文字转语音的逻辑
     setTimeout(() => {
-      setIsSpeaking(false);
+      setIsDuixSpeaking(false);
       // 确保不是在已经准备或回答的状态下再次触发准备
       if (!isPreparing && !isAnswering) {
         startPreparation();
@@ -283,6 +287,7 @@ function SimulationPage() {
   }
 
   const startPreparation = () => {
+    console.log('startPreparation被调用，调用栈:', new Error().stack)
     console.log('startPreparation被调用，当前状态:', {
       isPreparing,
       isAnswering,
@@ -371,8 +376,8 @@ function SimulationPage() {
     });
     
     // 通过DataChannel发送start事件到后端
-    if (webrtcPlayerRef.current && !hasSentStartEventRef.current) {
-      console.log('发送start事件到后端 (via ref)');
+    if (webrtcPlayerRef.current && !hasSentStartEventRef.current && currentQuestionIndex > 0) {
+      console.log('发送start事件到后端 (via ref) - 非第一轮面试');
       const success = webrtcPlayerRef.current.sendDataChannelMessage("start");
       console.log('start事件发送结果:', success);
       if (success) {
@@ -381,9 +386,11 @@ function SimulationPage() {
         console.log('start事件已标记为已发送');
       }
     } else {
-      console.error('webrtcPlayer不存在或start事件已发送，无法发送start事件', {
+      console.log('跳过发送start事件:', {
         playerExists: !!webrtcPlayerRef.current,
-        eventSent: hasSentStartEventRef.current
+        eventSent: hasSentStartEventRef.current,
+        currentQuestionIndex,
+        isFirstRound: currentQuestionIndex === 0
       });
     }
     
@@ -468,6 +475,8 @@ function SimulationPage() {
   // 处理数据通道消息
   const handleDataChannelMessage = (message: any) => {
     console.log('收到DataChannel消息:', message);
+    console.log('消息类型:', message.type, 'MessageType.AI:', MessageType.AI, '是否相等:', message.type === MessageType.AI);
+    console.log('duixRef.current:', !!duixRef.current, 'duixInited:', duixInited);
     
     // 新的消息格式：{ type: number, content: string }
     try {
@@ -479,6 +488,21 @@ function SimulationPage() {
           role: "interviewer",
           content: message.content
         }]);
+        
+        // 调用数字人speak方法驱动数字人说话
+        if (duixRef.current) {
+          console.log('调用数字人speak方法驱动数字人说话', message.content)
+          console.log('数字人实例状态:', {
+            duixRef: !!duixRef.current,
+            duixInited,
+            isDuixSpeaking
+          })
+          duixRef.current.speak({ content: message.content })
+          // 重置等待next事件状态，因为这是第一轮面试
+          setWaitingForNext(false)
+        } else {
+          console.error('数字人实例不存在，无法调用speak方法')
+        }
         
         // 滚动到最新消息
         setTimeout(() => {
@@ -660,6 +684,7 @@ function SimulationPage() {
       setIsInterviewStarted(true);
       setUploadResumeRequested(true);
       setHasSentStartEvent(false); // 重置start事件发送状态
+      setWaitingForNext(false); // 重置等待next事件状态
       setMessages(prev => [...prev, {
         role: "system",
         content: "面试已开始，请上传您的简历"
@@ -737,6 +762,22 @@ function SimulationPage() {
               role: "interviewer",
               content: data.content
             }]);
+            
+            // 调用数字人speak方法驱动数字人说话
+            if (duixRef.current) {
+              console.log('简历上传后调用数字人speak方法驱动数字人说话', data.content)
+              console.log('数字人实例状态:', {
+                duixRef: !!duixRef.current,
+                duixInited,
+                isDuixSpeaking
+              })
+              duixRef.current.speak({ content: data.content })
+              // 重置等待next事件状态，因为这是第一轮面试
+              setWaitingForNext(false)
+            } else {
+              console.error('数字人实例不存在，无法调用speak方法')
+            }
+            
           } else if (data.type === MessageType.TIP) {
             // 提示信息
             setMessages(prev => [...prev, {
@@ -765,11 +806,15 @@ function SimulationPage() {
         }]);
       }
       
-      // 开始准备
-      setTimeout(() => {
-        console.log('简历上传成功，开始第一轮准备');
-        startPreparation();
-      }, 2000);
+      // 移除自动触发准备倒计时的逻辑，改为在数字人结束说话时触发
+      // 如果后端返回的是AI消息，数字人会自动说话，说话结束后会触发准备倒计时
+      // 如果后端没有返回AI消息，则手动触发准备倒计时
+      if (!data || !data.type || data.type !== MessageType.AI) {
+        setTimeout(() => {
+          console.log('简历上传成功，没有AI消息，手动开始第一轮准备');
+          startPreparation();
+        }, 2000);
+      }
       
     } catch (error: any) {
       console.error('上传简历失败:', error);
@@ -813,6 +858,117 @@ function SimulationPage() {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
+
+  // 动态加载duix.js
+  useEffect(() => {
+    if (!(window as any).DUIX) {
+      const script = document.createElement('script')
+      script.src = "/duix.js"
+      script.async = true
+      document.body.appendChild(script)
+    }
+  }, [])
+
+  // webrtc连接成功后，获取sign并初始化数字人
+  useEffect(() => {
+    console.log('数字人初始化useEffect触发，条件检查:', {
+      isVideoOn,
+      isConnected,
+      isWebRTCConnected,
+      hasDUIX: !!(window as any).DUIX,
+      duixInited
+    })
+    
+    if ((isVideoOn || isConnected || isWebRTCConnected) && (window as any).DUIX && !duixInited) {
+      console.log('开始初始化数字人...')
+      fetch('http://localhost:5001/v1/sign')
+        .then(res => res.json())
+        .then((data: any) => {
+          console.log('获取到sign数据:', data)
+          if (!duixRef.current) {
+            console.log('创建数字人实例...')
+            duixRef.current = new (window as any).DUIX()
+            duixRef.current.on('error', (data: any) => { console.error('duix error', data) })
+            duixRef.current.on('intialSucccess', () => {
+              console.log('数字人初始化成功，开始启动...')
+              duixRef.current.start({ conversationId: data.conversation_id, openAsr: false })
+            })
+            duixRef.current.on('show', () => {
+              console.log('数字人显示成功，设置duixInited为true')
+              setDuixInited(true)
+            })
+            duixRef.current.on('speakStart', (data: any) => {
+              console.info('=== speakStart事件被触发 ===', data)
+              setIsDuixSpeaking(true)
+              console.log('数字人开始说话，设置isDuixSpeaking为true')
+            })
+            duixRef.current.on('speakEnd', (data: any) => {
+              console.info('=== speakEnd事件被触发 ===', data)
+              setIsDuixSpeaking(false)
+              console.log('数字人结束说话，设置isDuixSpeaking为false')
+              setTimeout(() => {
+                // 重新获取最新状态
+                const latestIsPreparing = isPreparing;
+                const latestIsAnswering = isAnswering;
+                const latestWaitingForNext = waitingForNext;
+                const latestHasSentStartEvent = hasSentStartEventRef.current;
+                const latestCurrentQuestionIndex = currentQuestionIndex;
+                console.log('speakEnd事件延迟检查，最新状态:', {
+                  latestIsPreparing,
+                  latestIsAnswering,
+                  latestWaitingForNext,
+                  latestHasSentStartEvent,
+                  latestCurrentQuestionIndex
+                })
+                if (!latestIsPreparing && !latestIsAnswering && !latestWaitingForNext) {
+                  console.log('数字人结束说话，开始准备倒计时')
+                  startPreparation()
+                } else {
+                  console.log('数字人结束说话，但不满足开始准备倒计时的条件:', {
+                    latestIsPreparing,
+                    latestIsAnswering,
+                    latestWaitingForNext,
+                    isDuixSpeaking: false,
+                    latestHasSentStartEvent,
+                    latestCurrentQuestionIndex
+                  })
+                }
+              }, 200)
+            })
+            console.log('开始初始化数字人实例...')
+            duixRef.current.init({
+              sign: data.sign,
+              containerLable: '.duix-container'
+            })
+          } else {
+            console.log('数字人实例已存在，跳过初始化')
+          }
+        })
+        .catch(error => {
+          console.error('获取sign失败:', error)
+        })
+    } else {
+      console.log('数字人初始化条件不满足，跳过初始化')
+    }
+  }, [isVideoOn, isConnected, isWebRTCConnected, duixInited, isInterviewStarted, isPreparing, isAnswering, isDuixSpeaking])
+
+  // 组件卸载时释放数字人资源
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (duixRef.current) {
+        duixRef.current.stop()
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      if (duixRef.current) {
+        duixRef.current.stop()
+      }
+    }
+  }, [])
 
   return (
     <Box 
@@ -1017,67 +1173,7 @@ function SimulationPage() {
                 )}
               </Card>
             ) : (
-              <Card 
-                sx={{ 
-                  p: 3, 
-                  borderRadius: 3,
-                  border: '2px solid',
-                  borderColor: 'grey.300',
-                }}
-              >
-                <Typography variant="h6" fontWeight={600} mb={2}>
-                  摄像头预览
-                </Typography>
-                <Box
-                  sx={{
-                    position: 'relative',
-                    width: '100%',
-                    height: 300,
-                    borderRadius: 2,
-                    overflow: 'hidden',
-                    bgcolor: 'black',
-                  }}
-                >
-                  {/* 摄像头未开启时的提示 */}
-                  {!isVideoOn && !isConnected && !isWebRTCConnected && (
-                    <Box
-                      sx={{
-                        width: '100%',
-                        height: '100%',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        bgcolor: '#fafafa',
-                        gap: 2
-                      }}
-                    >
-                      <VideocamOffIcon sx={{ fontSize: 48, color: 'grey.400' }} />
-                      <Typography color="text.secondary">摄像头已关闭</Typography>
-                    </Box>
-                  )}
-                  {/* 摄像头已开启时的提示 */}
-                  {(isVideoOn || isConnected || isWebRTCConnected) && (
-                    <Box
-                      sx={{
-                        width: '100%',
-                        height: '100%',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        bgcolor: 'rgba(0,0,0,0.8)',
-                        color: 'white',
-                        gap: 2
-                      }}
-                    >
-                      <VideocamIcon sx={{ fontSize: 48, color: 'white' }} />
-                      <Typography variant="h6">摄像头已开启</Typography>
-                      <Typography variant="body2" color="grey.300">视频将在主界面显示</Typography>
-                    </Box>
-                  )}
-                </Box>
-              </Card>
+              <></>
             )}
 
             <Box display="flex" justifyContent="center" gap={2}>
@@ -1290,77 +1386,51 @@ function SimulationPage() {
               overflow: 'hidden'
             }}
           >
-            <Card sx={{ 
-              flex: 1, 
-              display: 'flex', 
-              flexDirection: 'column', 
-              borderRadius: 3, 
-              overflow: 'hidden', 
-              position: 'relative' 
-            }}>
-              <Box
-                component="video"
-                ref={interviewVideoRef}
-                autoPlay
-                playsInline
-                muted
-                sx={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  bgcolor: '#000',
-                  transform: 'scaleX(-1)',
-                  display: 'block',
-                  opacity: (isVideoOn || isConnected || isWebRTCConnected || isInterviewStarted) ? 1 : 0,
+            <Card 
+              sx={{ 
+                p: 0, 
+                borderRadius: 3,
+                border: '2px solid',
+                borderColor: 'grey.300',
+                position: 'relative',
+                width: '100%',
+                height: '100vh',
+                overflow: 'hidden',
+              }}
+            >
+              {/* 数字人渲染区域 */}
+              <div className="duix-container" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100vh', zIndex: 1 }} />
+              {/* 视频预览悬浮窗，定位于数字人区域右上角 */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 16,
+                  right: 16,
+                  width: '25%',
+                  height: '25%',
+                  background: '#000',
+                  borderRadius: 8,
+                  overflow: 'hidden',
+                  resize: 'both',
+                  zIndex: 10,
+                  boxShadow: '0 2px 12px rgba(0,0,0,0.15)',
+                  display: (isVideoOn || isConnected || isWebRTCConnected) ? 'block' : 'none',
                 }}
-              />
-              {/* 如果面试已开始但没有视频流，显示提示 */}
-              {isInterviewStarted && !isVideoOn && !isConnected && !isWebRTCConnected && (
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    bgcolor: 'rgba(0,0,0,0.8)',
-                    color: 'white',
-                    gap: 2,
-                    zIndex: 1
-                  }}
-                >
-                  <VideocamIcon sx={{ fontSize: 48, color: 'white' }} />
-                  <Typography variant="h6">正在连接摄像头...</Typography>
-                  <Typography variant="body2" color="grey.300">请稍候，系统正在建立视频连接</Typography>
-                </Box>
-              )}
-              {/* 摄像头未开启时的提示 */}
-              {!isInterviewStarted && !isVideoOn && !isConnected && !isWebRTCConnected && (
-                <Box
-                  sx={{
-                    width: '100%',
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    bgcolor: '#fafafa',
-                    gap: 2
-                  }}
-                >
-                  <VideocamOffIcon sx={{ fontSize: 48, color: 'grey.400' }} />
-                  <Typography color="text.secondary">摄像头已关闭</Typography>
-                </Box>
-              )}
+              >
+                <video
+                  ref={interviewVideoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', background: '#000', borderRadius: 8 }}
+                />
+              </div>
+              {/* 面试状态提示，显示在数字人区域底部中央 */}
               <Box
                 position="absolute"
                 bottom={16}
                 left="50%"
-                sx={{ transform: 'translateX(-50%)' }}
+                sx={{ transform: 'translateX(-50%)', zIndex: 20 }}
                 display="flex"
                 gap={2}
               >
@@ -1398,7 +1468,7 @@ function SimulationPage() {
                     <Typography>作答时间：{remainingTime}秒</Typography>
                   </Box>
                 )}
-                {isSpeaking && (
+                {isDuixSpeaking && (
                   <Box
                     sx={{
                       bgcolor: 'rgba(91, 140, 255, 0.9)',
@@ -1412,7 +1482,7 @@ function SimulationPage() {
                     }}
                   >
                     <SmartToyIcon />
-                    <Typography>AI面试官正在提问</Typography>
+                    <Typography>数字人正在说话</Typography>
                   </Box>
                 )}
                 {isListening && (
@@ -1434,11 +1504,13 @@ function SimulationPage() {
                 )}
               </Box>
 
+              {/* 结束作答按钮，显示在数字人区域底部右侧 */}
               {isAnswering && (
                 <Box
                   position="absolute"
                   bottom={16}
                   right={16}
+                  sx={{ zIndex: 20 }}
                 >
                   <Button
                     variant="contained"
