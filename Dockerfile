@@ -24,7 +24,8 @@ RUN echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bashrc && \
     echo 'eval "$(pyenv virtualenv-init -)"' >> ~/.bashrc && \
     . ~/.bashrc && \
     pyenv install 3.11 && \
-    pyenv global 3.11
+    pyenv global 3.11 && \
+    pip install --upgrade pip && pip install poetry && poetry install --no-root
 
 COPY script/entrypoint.sh /entrypoint.sh
 

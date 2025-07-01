@@ -11,10 +11,6 @@ export MYSQLCLIENT_LDFLAGS="-L/usr/lib/x86_64-linux-gnu -lmysqlclient"
 
 cd /root/workspace/
 
-#tail -f /dev/null
-
-pip install --upgrade pip && pip install poetry && poetry install --no-root
-
 poetry run flask run --host=0.0.0.0 --port=5001 --debug &
 
 poetry run python webrtc/rtc_server.py &
