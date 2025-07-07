@@ -1,4 +1,17 @@
-# 部署
+# docker容器部署
+
+设置环境变量(按需修改.env)
+```shell
+cp .env.example .env
+```
+
+```shell
+docker build -t interview:main .
+
+docker run --name interview -itd -p 5001:5001 -p 8080:8080 -p 3001:3001 interview:main
+```
+
+# 本地开发环境部署
 
 python=3.11
 
@@ -47,5 +60,4 @@ pnpm run start
 ```
 
 # 简历提交
-提交简历用test目录下的resume.txt先测试，后续支持word、pdf等格式
-resume.txt内容你可以随意更改，可以让大模型给你生成一个，面试的问题基本上是基于简历提问的
+测试简历在test目录中
