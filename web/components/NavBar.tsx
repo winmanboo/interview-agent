@@ -2,11 +2,21 @@
 
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { ThemeToggle } from "./theme-provider"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu"
+import { LogOut, User } from "lucide-react"
 
 export default function NavBar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [user, setUser] = useState<{ name: string; email: string } | null>(null)
   
   useEffect(() => {
@@ -20,6 +30,13 @@ export default function NavBar() {
       }
     }
   }, [])
+  
+  // 退出登录函数
+  const handleLogout = () => {
+    localStorage.removeItem('user')
+    setUser(null)
+    router.push('/')
+  }
   
   // 导航项目
   const navItems = [
@@ -57,9 +74,28 @@ export default function NavBar() {
         <div className="flex items-center gap-2">
           <ThemeToggle />
           {user ? (
-            <div className="h-9 w-9 rounded-full bg-blue-500 text-white flex items-center justify-center">
-              {user.name[0].toUpperCase()}
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="h-9 w-9 rounded-full bg-blue-500 text-white flex items-center justify-center hover:bg-blue-600 transition-colors">
+                  {user.name[0].toUpperCase()}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{user.name}</p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {user.email}
+                    </p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>退出登录</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : (
             <Link href="/auth/login">
               <button className="h-9 w-9 rounded-full bg-blue-500 text-white flex items-center justify-center">
@@ -74,4 +110,4 @@ export default function NavBar() {
       </div>
     </header>
   )
-} 
+}

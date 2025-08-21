@@ -62,6 +62,7 @@ async def offer(request):
             if message == 'ping':
                 channel.send('pong')
             elif message == 'start':
+                # fixme 前端没有发送start事件
                 audio_track.cut_off()
             elif message == 'stop':
                 await audio_track.analyze()
