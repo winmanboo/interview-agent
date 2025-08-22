@@ -89,8 +89,10 @@ async def offer(request):
             pc.addTrack(local_video)
 
         elif track.kind == 'audio':
-            logging.info('add audio track')
-            pc.addTrack(audio_track)
+            logging.info('received audio track from frontend')
+            # 将接收到的音频轨道设置为audio_track的输入源
+            audio_track.set_input_track(track)
+            logging.info('audio track input source set')
 
     # handle offer
     await pc.setRemoteDescription(offer)

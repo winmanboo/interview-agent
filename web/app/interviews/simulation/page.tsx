@@ -341,6 +341,10 @@ function SimulationPage() {
       webrtcPlayer: !!webrtcPlayer,
       webrtcPlayerType: typeof webrtcPlayer,
       webrtcPlayerValue: webrtcPlayer,
+      webrtcPlayerRef: !!webrtcPlayerRef.current,
+      webrtcPlayerRefType: typeof webrtcPlayerRef.current,
+      webrtcPlayerRefValue: webrtcPlayerRef.current,
+      currentQuestionIndex,
       timerRef: !!timerRef.current,
       hasSentStartEvent: hasSentStartEventRef.current,
       isInterviewStarted,
@@ -375,9 +379,16 @@ function SimulationPage() {
       }];
     });
     
-    // 通过DataChannel发送start事件到后端
-    if (webrtcPlayerRef.current && !hasSentStartEventRef.current && currentQuestionIndex > 0) {
-      console.log('发送start事件到后端 (via ref) - 非第一轮面试');
+    // 通过DataChannel发送start事件到后端（所有轮次都发送）
+    console.log('检查start事件发送条件:', {
+      playerExists: !!webrtcPlayerRef.current,
+      eventSent: hasSentStartEventRef.current,
+      currentQuestionIndex,
+      shouldSend: currentQuestionIndex >= 0
+    });
+    
+    if (webrtcPlayerRef.current && !hasSentStartEventRef.current) {
+      console.log('发送start事件到后端 (via ref) - 第', currentQuestionIndex + 1, '轮面试');
       const success = webrtcPlayerRef.current.sendDataChannelMessage("start");
       console.log('start事件发送结果:', success);
       if (success) {
@@ -390,7 +401,7 @@ function SimulationPage() {
         playerExists: !!webrtcPlayerRef.current,
         eventSent: hasSentStartEventRef.current,
         currentQuestionIndex,
-        isFirstRound: currentQuestionIndex === 0
+        reason: !webrtcPlayerRef.current ? 'webrtcPlayer不存在' : 'start事件已发送'
       });
     }
     
@@ -551,11 +562,12 @@ function SimulationPage() {
             return newIndex;
           });
           
-          // 重置start事件发送状态，为新一轮准备做准备
+          // 立即重置start事件发送状态，确保时序正确
           hasSentStartEventRef.current = false;
           setHasSentStartEvent(false);
-          setWaitingForNext(false); // 重置等待next事件状态
           console.log('重置hasSentStartEvent状态，准备发送新一轮start事件');
+          
+          setWaitingForNext(false); // 重置等待next事件状态
           
           // 重要：只有在收到next事件后才开始新一轮准备
           setTimeout(() => {
