@@ -60,7 +60,6 @@ class BodyLanguageAspect(BaseModel):
 class LearningResource(BaseModel):
     """学习资源模型"""
     title: str = Field(..., description="资源标题")
-    url: str = Field(default="#", description="资源链接（示例用'#'）", )
 
 
 # ------------------------- 主模型 -------------------------
@@ -172,10 +171,6 @@ class LearningResources(BaseModel):
     interview_skills: List[LearningResource] = Field(
         ..., description="面试技巧资源"
     )
-    full_path_url: str = Field(
-        default="#", description="完整学习路径链接",
-    )
-
 
 class SpeechAnalysis(BaseModel):
     speech_rate_analysis: SpeechRateAnalysis = Field(...)
