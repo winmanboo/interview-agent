@@ -40,4 +40,6 @@ GENERATE_REPORT_USER_PROMPT = """
 8. 主要不足与改进建议
 9. 整体推荐评级（A/B/C/D）
 10. 详细的综合评价（200字左右）
+
+注意生成报告的JSON结构体中需严格按照JSON格式，并且可被python程序序列化
 """

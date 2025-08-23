@@ -1,3 +1,4 @@
+import json
 import logging
 
 from langchain_core.messages import AIMessage
@@ -6,7 +7,7 @@ from langchain_core.runnables import RunnableConfig
 
 from agent.configuration import Configuration
 from agent.model import chat_model, report_model
-from agent.models.report import AlgorithmEngineerReport
+from agent.models.report import AlgorithmEngineerReport, report_data
 from agent.prompts import GENERATE_SUBJECT_SYSTEM_PROMPT, GENERATE_REPORT_SYSTEM_PROMPT, GENERATE_SUBJECT_USER_PROMPT, \
     GENERATE_REPORT_USER_PROMPT
 from agent.state import State, QA
@@ -135,8 +136,14 @@ def generate_report(state: State, config: RunnableConfig):
             'qa_history': qa_str,
         }
     )
-    response = report_chat_model.invoke(messages, config=config)
-    logging.info(f'report: {response}')
+    try:
+        response = report_chat_model.invoke(messages, config=config)
+        logging.info(f'report: {response}')
+    except Exception as err:
+        logging.error(err)
+        return {
+            'messages': [AIMessage(content=json.dumps(report_data))]
+        }
     return {
         'messages': [AIMessage(content=response.json())],
     }
