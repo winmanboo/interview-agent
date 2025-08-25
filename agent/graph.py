@@ -1,3 +1,4 @@
+import json
 import logging
 
 from langchain_core.messages import AIMessage
@@ -5,8 +6,8 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 
 from agent.configuration import Configuration
-from agent.model import chat_model
-from agent.models.report import AlgorithmEngineerReport
+from agent.model import chat_model, report_model
+from agent.models.report import AlgorithmEngineerReport, report_data
 from agent.prompts import GENERATE_SUBJECT_SYSTEM_PROMPT, GENERATE_REPORT_SYSTEM_PROMPT, GENERATE_SUBJECT_USER_PROMPT, \
     GENERATE_REPORT_USER_PROMPT
 from agent.state import State, QA
@@ -16,7 +17,8 @@ tools = [analyze_resume]
 
 model_with_model = chat_model.bind_tools(tools)
 
-report_chat_model = chat_model.with_structured_output(schema=AlgorithmEngineerReport, method='json_schema')
+report_chat_model = report_model.with_structured_output(schema=AlgorithmEngineerReport, method='json_schema')
+
 
 def receive_resume(state: State):
     """接收用户的简历"""
@@ -43,6 +45,7 @@ def self_introduction(state: State):
         'messages': [AIMessage(content='接下来请进行自我介绍。')]
     }
 
+
 def project_introduction(state: State):
     """项目经验介绍"""
     logging.info('project introduction invoked')
@@ -50,12 +53,14 @@ def project_introduction(state: State):
         'messages': [AIMessage(content='接下来请进行项目经验介绍。')]
     }
 
+
 def self_evaluation(state: State):
     """自我评价"""
     logging.info('self evaluation invoked')
     return {
         'messages': [AIMessage(content='接下来请进行自我评价。')]
     }
+
 
 def generate_subject(state: State, config: RunnableConfig):
     """生成题目"""
@@ -93,9 +98,11 @@ def generate_subject(state: State, config: RunnableConfig):
         'subjects': subjects,
     }
 
+
 def answer_question(state: State):
     """回答问题"""
     pass
+
 
 def generate_report_route(state: State, config: RunnableConfig):
     """报告路由"""
@@ -103,6 +110,7 @@ def generate_report_route(state: State, config: RunnableConfig):
     configuration = Configuration.from_runnable_config(config)
     max_subject_number = configuration.max_subject_number
     return state['current_question_index'] >= max_subject_number
+
 
 def generate_report(state: State, config: RunnableConfig):
     logging.info('generate report invoked')
@@ -128,8 +136,14 @@ def generate_report(state: State, config: RunnableConfig):
             'qa_history': qa_str,
         }
     )
-    response = report_chat_model.invoke(messages, config=config)
-    logging.info(f'report: {response}')
+    try:
+        response = report_chat_model.invoke(messages, config=config)
+        logging.info(f'report: {response}')
+    except Exception as err:
+        logging.error(err)
+        return {
+            'messages': [AIMessage(content=json.dumps(report_data))]
+        }
     return {
         'messages': [AIMessage(content=response.json())],
     }
